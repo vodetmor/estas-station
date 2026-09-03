@@ -23,6 +23,11 @@
   right: 0;
   top: -46px;
   bottom: 46px;
+  /* Os rótulos 3D (drei <Html>) são DOM com z-index próprio. Sem um z-index aqui o .viewport
+     não abre contexto de empilhamento e esses rótulos disputam camada direto com a topbar,
+     passando por cima dela. Com z-index: 1 eles ficam confinados abaixo de todo o HUD. */
+  z-index: 1;
+  isolation: isolate;
 }
 
 .viewport canvas {
@@ -2538,5 +2543,64 @@
 
   .badge-name small {
     display: none;
+  }
+}
+
+/* ------------------------------------------------------------------
+   Colisões de HUD: com o painel de diagnóstico aberto, o crédito do
+   rodapé ficava por baixo dele no canto inferior direito. O crédito é
+   decorativo — some enquanto há painel aberto e volta ao fechar.
+------------------------------------------------------------------- */
+
+.credit {
+  transition: opacity 200ms ease, transform 200ms ease;
+}
+
+.app[data-details='open'] .credit,
+.app[data-indicators='open'] .credit {
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+}
+
+/* Em telas baixas o painel de diagnóstico não pode encostar na linha do tempo. */
+@media (max-height: 780px) {
+  .details-drawer {
+    top: 118px;
+    bottom: calc(var(--bottom-gap) - 22px);
+  }
+}
+
+/* A linha do tempo é centrada na tela INTEIRA; com o painel de diagnóstico aberto ela
+   corria por baixo dele e os últimos ticks (e o selo de conformidade) sumiam. Aqui ela
+   passa a se centrar no espaço que sobra à esquerda do painel. */
+@media (min-width: 901px) {
+  .app[data-details='open'] .timeline,
+  .app[data-details='open'] .statusbar {
+    left: calc((100% - 400px) / 2);
+    width: min(660px, calc(100% - 460px));
+  }
+
+  .app[data-details='open'] .statusbar {
+    width: auto;
+    max-width: min(660px, calc(100% - 460px));
+  }
+
+  .app[data-details='open'] .drawer-tab.indicators {
+    left: calc((100% - 400px) / 2);
+  }
+}
+
+/* ------------------------------------------------------------------
+   Celular: a dock de camadas vira uma faixa horizontal rolável, então o
+   controle de vazão entra como uma coluna ao lado dos botões, não abaixo.
+------------------------------------------------------------------- */
+@media (max-width: 900px) {
+  .flow-control {
+    margin: 0 0 0 6px;
+    padding: 0 0 0 10px;
+    border-top: 0;
+    border-left: 1px solid rgba(255, 255, 255, 0.08);
+    flex: 0 0 132px;
   }
 }

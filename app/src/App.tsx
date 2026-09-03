@@ -23,8 +23,8 @@ function StationScene() {
   return (
     <>
       {/* Luz de céu aberto: hemisférica fria por cima, quente refletida do solo por baixo. */}
-      <hemisphereLight args={['#dceeff', '#3b3226', 0.62]} />
-      <ambientLight intensity={0.34} />
+      <hemisphereLight args={['#dceeff', '#5a4c38', 0.78]} />
+      <ambientLight intensity={0.46} />
       {/* Sol principal — é ele que projeta as sombras que assentam a estação no terreno. */}
       <directionalLight
         position={[-16, 22, 14]}
@@ -32,8 +32,8 @@ function StationScene() {
         color='#fff4e2'
         castShadow
         shadow-mapSize={[2048, 2048]}
-        shadow-bias={-0.0006}
-        shadow-normalBias={0.02}
+        shadow-bias={-0.0004}
+        shadow-normalBias={0.07}
         shadow-camera-left={-20}
         shadow-camera-right={20}
         shadow-camera-top={16}

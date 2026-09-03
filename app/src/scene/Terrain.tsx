@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef } from 'react';
+import { useMemo } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import {
@@ -36,20 +36,6 @@ function slopeAt(x: number, z: number): number {
   return Math.hypot(dx, dz);
 }
 
-/**
- * O material de um InstancedMesh compila no PRIMEIRO render, quando instanceColor ainda não
- * existe (só preenchemos no layout effect). Sem o define USE_INSTANCING_COLOR o shader lê o
- * atributo "color" inexistente como (0,0,0) e a vegetação inteira fica PRETA. Recompilar depois
- * de preencher as cores é o que corrige.
- */
-function flushInstanceColor(mesh: THREE.InstancedMesh) {
-  if (!mesh.instanceColor) return;
-  mesh.instanceColor.needsUpdate = true;
-  const mat = mesh.material as THREE.Material | THREE.Material[];
-  if (Array.isArray(mat)) mat.forEach((m) => (m.needsUpdate = true));
-  else mat.needsUpdate = true;
-}
-
 function hash(i: number): number {
   const s = Math.sin(i * 127.1) * 43758.5453;
   return s - Math.floor(s);
@@ -60,7 +46,9 @@ export function Terrain() {
 
   return (
     <group name="encosta">
-      <mesh geometry={surface} receiveShadow castShadow>
+      {/* A superfície RECEBE sombra mas não projeta: com o sol rasante a malha do relevo
+          sombreava a si mesma e salpicava o gramado de manchas pretas (shadow acne). */}
+      <mesh geometry={surface} receiveShadow>
         <meshStandardMaterial vertexColors roughness={0.95} metalness={0.02} />
       </mesh>
       <mesh geometry={strata} receiveShadow>
@@ -322,152 +310,155 @@ function DrainageChannel() {
 // ---------------------------------------------------------------------------
 
 const GRASS_COUNT = 3000;
-const SHRUB_COUNT = 90;
+const SHRUB_COUNT = 110;
 const ROCK_COUNT = 90;
 
+/**
+ * A vegetação é construída IMPERATIVAMENTE (geometria, material, matrizes e cores de instância
+ * já prontos) e só então entregue à cena via <primitive>.
+ *
+ * O motivo é um bug real: montando o InstancedMesh por JSX e preenchendo as cores num efeito,
+ * o material compila no primeiro render — quando `instanceColor` ainda não existe. Sem o define
+ * USE_INSTANCING_COLOR o shader lê o atributo `color` inexistente como (0,0,0) e a vegetação
+ * inteira sai PRETA. Preenchendo antes de entrar na cena, essa janela deixa de existir.
+ */
 function Vegetation() {
-  const grassRef = useRef<THREE.InstancedMesh>(null);
-  const shrubRef = useRef<THREE.InstancedMesh>(null);
-  const rockRef = useRef<THREE.InstancedMesh>(null);
   const time = useMemo(() => ({ value: 0 }), []);
-
-  // Tufo de capim: três lâminas cruzadas com a origem na base (o shader de vento dobra a ponta).
-  const grassGeo = useMemo(() => {
-    const blade = new THREE.ConeGeometry(0.03, 0.2, 3, 1, true);
-    blade.translate(0, 0.1, 0);
-    const parts: THREE.BufferGeometry[] = [];
-    for (let k = 0; k < 3; k++) {
-      const g = blade.clone();
-      g.rotateY((k * Math.PI * 2) / 3);
-      g.translate(Math.cos(k * 2.1) * 0.045, 0, Math.sin(k * 2.1) * 0.045);
-      parts.push(g);
-    }
-    const merged = mergeGeometries(parts);
-    blade.dispose();
-    parts.forEach((p) => p.dispose());
-    return merged;
-  }, []);
-
-  const grassMat = useMemo(() => {
-    const m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, metalness: 0, side: THREE.DoubleSide });
-    m.onBeforeCompile = (shader) => {
-      shader.uniforms.uTime = time;
-      shader.vertexShader = shader.vertexShader
-        .replace('#include <common>', '#include <common>\nuniform float uTime;')
-        .replace(
-          '#include <begin_vertex>',
-          `#include <begin_vertex>
-           #ifdef USE_INSTANCING
-             float wx = instanceMatrix[3][0];
-             float wz = instanceMatrix[3][2];
-             float bend = max(transformed.y, 0.0);
-             transformed.x += sin(uTime * 1.7 + wx * 1.4 + wz * 0.9) * 0.09 * bend;
-             transformed.z += cos(uTime * 1.25 + wx * 0.8 + wz * 1.5) * 0.055 * bend;
-           #endif`,
-        );
-    };
-    return m;
-  }, [time]);
+  const { grass, shrubs, rocks } = useMemo(() => buildVegetation(time), [time]);
 
   useFrame((_, delta) => {
     time.value += delta;
   });
 
-  useLayoutEffect(() => {
-    const m4 = new THREE.Matrix4();
-    const q = new THREE.Quaternion();
-    const e = new THREE.Euler();
-    const v = new THREE.Vector3();
-    const s = new THREE.Vector3();
-    const col = new THREE.Color();
-    const light = new THREE.Color(PALETTE.grassLight);
-    const dark = new THREE.Color(PALETTE.grassDark);
-    const dry = new THREE.Color(PALETTE.grassDry);
-
-    // ---- capim ----
-    if (grassRef.current) {
-      let n = 0;
-      for (let i = 0; n < GRASS_COUNT && i < GRASS_COUNT * 8; i++) {
-        const x = BLOCK.minX + 0.3 + hash(i * 3.1) * (BLOCK.maxX - BLOCK.minX - 0.6);
-        const z = BLOCK.minZ + 0.3 + hash(i * 7.7 + 4.2) * (BLOCK.maxZ - BLOCK.minZ - 0.6);
-        if (insideAnyModule(x, z, 0.5) || insideCorridor(x, z)) continue;
-        if (slopeAt(x, z) > 1.5) continue; // talude nu de terra não cria capim
-        const y = groundY(x, z);
-        e.set(hash(i * 1.7) * 0.16 - 0.08, hash(i * 2.9) * Math.PI * 2, hash(i * 5.3) * 0.16 - 0.08);
-        q.setFromEuler(e);
-        const sc = 0.6 + hash(i * 11.3) * 0.75;
-        m4.compose(v.set(x, y, z), q, s.set(sc, sc * (0.8 + hash(i * 13.1) * 0.7), sc));
-        grassRef.current.setMatrixAt(n, m4);
-        col.copy(dark).lerp(light, hash(i * 17.9));
-        if (naturalFactor(z) > 0.3) col.lerp(dry, 0.45);
-        grassRef.current.setColorAt(n, col);
-        n++;
-      }
-      grassRef.current.count = n;
-      grassRef.current.instanceMatrix.needsUpdate = true;
-      flushInstanceColor(grassRef.current);
-    }
-
-    // ---- arbustos ----
-    if (shrubRef.current) {
-      let n = 0;
-      for (let i = 0; n < SHRUB_COUNT && i < SHRUB_COUNT * 12; i++) {
-        const x = BLOCK.minX + 0.5 + hash(i * 4.4 + 1.1) * (BLOCK.maxX - BLOCK.minX - 1);
-        const z = BLOCK.minZ + 0.5 + hash(i * 9.1 + 2.7) * (BLOCK.maxZ - BLOCK.minZ - 1);
-        if (insideAnyModule(x, z, 1.1) || insideCorridor(x, z)) continue;
-        if (slopeAt(x, z) > 1.2) continue;
-        const y = groundY(x, z);
-        const sc = 0.13 + hash(i * 6.6) * 0.15;
-        e.set(0, hash(i * 3.3) * 6.28, 0);
-        q.setFromEuler(e);
-        m4.compose(v.set(x, y + sc * 0.6, z), q, s.set(sc * 1.3, sc, sc * 1.3));
-        shrubRef.current.setMatrixAt(n, m4);
-        col.copy(dark).lerp(light, 0.35 + hash(i * 8.8) * 0.5);
-        shrubRef.current.setColorAt(n, col);
-        n++;
-      }
-      shrubRef.current.count = n;
-      shrubRef.current.instanceMatrix.needsUpdate = true;
-      flushInstanceColor(shrubRef.current);
-    }
-
-    // ---- matacões ----
-    if (rockRef.current) {
-      let n = 0;
-      for (let i = 0; n < ROCK_COUNT && i < ROCK_COUNT * 14; i++) {
-        const x = BLOCK.minX + 0.4 + hash(i * 2.2 + 5.5) * (BLOCK.maxX - BLOCK.minX - 0.8);
-        const z = BLOCK.minZ + 0.4 + hash(i * 12.7 + 0.9) * (BLOCK.maxZ - BLOCK.minZ - 0.8);
-        if (insideAnyModule(x, z, 0.8) || insideCorridor(x, z)) continue;
-        const y = groundY(x, z);
-        const sc = 0.08 + hash(i * 5.9) * 0.24;
-        e.set(hash(i * 1.3) * 3, hash(i * 2.4) * 6.28, hash(i * 3.6) * 3);
-        q.setFromEuler(e);
-        m4.compose(v.set(x, y + sc * 0.35, z), q, s.set(sc, sc * 0.8, sc * 1.1));
-        rockRef.current.setMatrixAt(n, m4);
-        col.setHex(0x6b6862).offsetHSL(0, 0, (hash(i * 7.2) - 0.5) * 0.16);
-        rockRef.current.setColorAt(n, col);
-        n++;
-      }
-      rockRef.current.count = n;
-      rockRef.current.instanceMatrix.needsUpdate = true;
-      flushInstanceColor(rockRef.current);
-    }
-  }, []);
-
   return (
     <group name="vegetacao">
-      <instancedMesh ref={grassRef} args={[grassGeo, grassMat, GRASS_COUNT]} frustumCulled={false} />
-      <instancedMesh ref={shrubRef} args={[undefined, undefined, SHRUB_COUNT]} castShadow frustumCulled={false}>
-        <icosahedronGeometry args={[1, 1]} />
-        <meshStandardMaterial vertexColors roughness={0.92} flatShading />
-      </instancedMesh>
-      <instancedMesh ref={rockRef} args={[undefined, undefined, ROCK_COUNT]} castShadow receiveShadow frustumCulled={false}>
-        <dodecahedronGeometry args={[1, 0]} />
-        <meshStandardMaterial vertexColors roughness={0.95} flatShading />
-      </instancedMesh>
+      <primitive object={grass} />
+      <primitive object={shrubs} />
+      <primitive object={rocks} />
       <Trees />
     </group>
   );
+}
+
+function buildVegetation(time: { value: number }) {
+  const m4 = new THREE.Matrix4();
+  const q = new THREE.Quaternion();
+  const e = new THREE.Euler();
+  const v = new THREE.Vector3();
+  const sc = new THREE.Vector3();
+  const col = new THREE.Color();
+  const light = new THREE.Color(PALETTE.grassLight);
+  const dark = new THREE.Color(PALETTE.grassDark);
+  const dry = new THREE.Color(PALETTE.grassDry);
+
+  // ---- tufo de capim: três lâminas cruzadas, origem na base (o vento dobra só a ponta) ----
+  const blade = new THREE.ConeGeometry(0.03, 0.2, 3, 1, true);
+  blade.translate(0, 0.1, 0);
+  const parts: THREE.BufferGeometry[] = [];
+  for (let k = 0; k < 3; k++) {
+    const g = blade.clone();
+    g.rotateY((k * Math.PI * 2) / 3);
+    g.translate(Math.cos(k * 2.1) * 0.045, 0, Math.sin(k * 2.1) * 0.045);
+    parts.push(g);
+  }
+  const grassGeo = mergeGeometries(parts);
+  blade.dispose();
+  parts.forEach((p) => p.dispose());
+
+  const grassMat = new THREE.MeshStandardMaterial({
+    vertexColors: true,
+    roughness: 0.85,
+    metalness: 0,
+    side: THREE.DoubleSide,
+  });
+  grassMat.onBeforeCompile = (shader) => {
+    shader.uniforms.uTime = time;
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nuniform float uTime;')
+      .replace(
+        '#include <begin_vertex>',
+        `#include <begin_vertex>
+         #ifdef USE_INSTANCING
+           float wx = instanceMatrix[3][0];
+           float wz = instanceMatrix[3][2];
+           float bend = max(transformed.y, 0.0);
+           transformed.x += sin(uTime * 1.7 + wx * 1.4 + wz * 0.9) * 0.09 * bend;
+           transformed.z += cos(uTime * 1.25 + wx * 0.8 + wz * 1.5) * 0.055 * bend;
+         #endif`,
+      );
+  };
+
+  const grass = new THREE.InstancedMesh(grassGeo, grassMat, GRASS_COUNT);
+  let n = 0;
+  for (let i = 0; n < GRASS_COUNT && i < GRASS_COUNT * 8; i++) {
+    const x = BLOCK.minX + 0.3 + hash(i * 3.1) * (BLOCK.maxX - BLOCK.minX - 0.6);
+    const z = BLOCK.minZ + 0.3 + hash(i * 7.7 + 4.2) * (BLOCK.maxZ - BLOCK.minZ - 0.6);
+    if (insideAnyModule(x, z, 0.5) || insideCorridor(x, z)) continue;
+    if (slopeAt(x, z) > 1.5) continue; // talude nu de terra não cria capim
+    const y = groundY(x, z);
+    e.set(hash(i * 1.7) * 0.16 - 0.08, hash(i * 2.9) * Math.PI * 2, hash(i * 5.3) * 0.16 - 0.08);
+    q.setFromEuler(e);
+    const s = 0.6 + hash(i * 11.3) * 0.75;
+    m4.compose(v.set(x, y, z), q, sc.set(s, s * (0.8 + hash(i * 13.1) * 0.7), s));
+    grass.setMatrixAt(n, m4);
+    col.copy(dark).lerp(light, hash(i * 17.9));
+    if (naturalFactor(z) > 0.3) col.lerp(dry, 0.45);
+    grass.setColorAt(n, col);
+    n++;
+  }
+  grass.count = n;
+  grass.frustumCulled = false;
+
+  // ---- arbustos ----
+  // Cor SOLIDA de proposito: com instanceColor os arbustos saiam pretos, e a variacao por
+  // instancia nao compensa o risco num objeto deste tamanho — escala e flatShading ja dao
+  // variacao suficiente. Tambem nao projetam sombra: arbusto de 15 cm virava mancha no gramado.
+  const shrubs = new THREE.InstancedMesh(
+    new THREE.IcosahedronGeometry(1, 1),
+    new THREE.MeshStandardMaterial({ color: '#6ba14a', roughness: 0.88, flatShading: true }),
+    SHRUB_COUNT,
+  );
+  n = 0;
+  for (let i = 0; n < SHRUB_COUNT && i < SHRUB_COUNT * 14; i++) {
+    const x = BLOCK.minX + 0.5 + hash(i * 4.4 + 1.1) * (BLOCK.maxX - BLOCK.minX - 1);
+    const z = BLOCK.minZ + 0.5 + hash(i * 9.1 + 2.7) * (BLOCK.maxZ - BLOCK.minZ - 1);
+    if (insideAnyModule(x, z, 1.1) || insideCorridor(x, z)) continue;
+    if (slopeAt(x, z) > 1.2) continue;
+    const y = groundY(x, z);
+    const s = 0.13 + hash(i * 6.6) * 0.15;
+    e.set(0, hash(i * 3.3) * 6.28, 0);
+    q.setFromEuler(e);
+    m4.compose(v.set(x, y + s * 0.6, z), q, sc.set(s * 1.3, s, s * 1.3));
+    shrubs.setMatrixAt(n, m4);
+    n++;
+  }
+  shrubs.count = n;
+  shrubs.frustumCulled = false;
+
+  // ---- matacões ----
+  const rocks = new THREE.InstancedMesh(
+    new THREE.DodecahedronGeometry(1, 0),
+    new THREE.MeshStandardMaterial({ color: '#98938a', roughness: 0.95, flatShading: true }),
+    ROCK_COUNT,
+  );
+  n = 0;
+  for (let i = 0; n < ROCK_COUNT && i < ROCK_COUNT * 14; i++) {
+    const x = BLOCK.minX + 0.4 + hash(i * 2.2 + 5.5) * (BLOCK.maxX - BLOCK.minX - 0.8);
+    const z = BLOCK.minZ + 0.4 + hash(i * 12.7 + 0.9) * (BLOCK.maxZ - BLOCK.minZ - 0.8);
+    if (insideAnyModule(x, z, 0.8) || insideCorridor(x, z)) continue;
+    const y = groundY(x, z);
+    const s = 0.08 + hash(i * 5.9) * 0.24;
+    e.set(hash(i * 1.3) * 3, hash(i * 2.4) * 6.28, hash(i * 3.6) * 3);
+    q.setFromEuler(e);
+    m4.compose(v.set(x, y + s * 0.35, z), q, sc.set(s, s * 0.8, s * 1.1));
+    rocks.setMatrixAt(n, m4);
+    n++;
+  }
+  rocks.count = n;
+  rocks.receiveShadow = true;
+  rocks.frustumCulled = false;
+
+  return { grass, shrubs, rocks };
 }
 
 /** Árvores na crista da serra e na borda do vale — dão escala humana à maquete. */
@@ -496,7 +487,7 @@ function Trees() {
             <mesh key={k} position={[0, 0.7 + k * 0.25, 0]} castShadow>
               <coneGeometry args={[0.42 - k * 0.11, 0.46, 7]} />
               <meshStandardMaterial
-                color={t.k > 0.5 ? '#4c7d3c' : '#5c8d44'}
+                color={t.k > 0.5 ? '#5f9a48' : '#6faa52'}
                 roughness={0.92}
                 flatShading
               />

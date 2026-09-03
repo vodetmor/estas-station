@@ -13,6 +13,8 @@ import { useStationStore } from '../state/store';
 const SPAN_X = BLOCK.maxX - BLOCK.minX;
 const SPAN_Z = BLOCK.maxZ - BLOCK.minZ;
 const CENTER_X = (BLOCK.maxX + BLOCK.minX) / 2;
+/** Largura do painel de diagnóstico + respiro, em pixels (ver .details-drawer no App.css). */
+const PANEL_PX = 400;
 
 export function IsoCamera({ resetSignal }: { resetSignal: number }) {
   const controlsRef = useRef<ElementRef<typeof OrbitControls>>(null);
@@ -20,6 +22,7 @@ export function IsoCamera({ resetSignal }: { resetSignal: number }) {
   const mounted = useRef(false);
   const autoRotate = useStationStore((s) => s.autoRotate);
   const selectedStageId = useStationStore((s) => s.selectedStageId);
+  const detailsOpen = useStationStore((s) => s.detailsOpen);
   const { size } = useThree();
 
   // Numa isométrica simétrica o comprimento e a largura somam na horizontal projetada.
@@ -43,14 +46,26 @@ export function IsoCamera({ resetSignal }: { resetSignal: number }) {
   }, [resetSignal]);
 
   // Mira: centro da estação quando nada está selecionado, o módulo escolhido quando há foco.
+  //
+  // Com o painel de diagnóstico aberto, ~400 px da direita da tela ficam cobertos. Mirar o
+  // módulo no centro geométrico o esconderia atrás do painel — por isso a mira recua ao longo
+  // da diagonal da câmera, jogando o módulo para a metade livre do enquadramento.
   useEffect(() => {
     const controls = controlsRef.current;
     if (!controls) return;
     const m = selectedStageId ? MODULE_BY_ID[selectedStageId as keyof typeof MODULE_BY_ID] : null;
-    const target = m ? [m.x, m.floorY + m.h * 0.4, m.z] : [CENTER_X + 0.3, 1.0, 0];
-    controls.target.set(target[0], target[1], target[2]);
+    if (!m) {
+      controls.target.set(CENTER_X + 0.3, 1.0, 0);
+      controls.update();
+      return;
+    }
+    // Metade da largura coberta pelo painel, convertida de pixels para unidades de mundo.
+    const panel = detailsOpen && size.width > 900 ? (PANEL_PX / 2 / zoom) : 0;
+    // Na isométrica, deslocar a mira para a direita da tela = somar em +X e -Z.
+    const shift = panel * 0.7;
+    controls.target.set(m.x + shift, m.floorY + m.h * 0.4, m.z - shift);
     controls.update();
-  }, [selectedStageId]);
+  }, [selectedStageId, detailsOpen, zoom, size.width]);
 
   return (
     <>
