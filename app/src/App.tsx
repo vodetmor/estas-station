@@ -1,10 +1,9 @@
 import { Canvas } from '@react-three/fiber';
 import './App.css';
 import { IsoCamera } from './scene/IsoCamera';
-import { HillsideTerrain } from './scene/HillsideTerrain';
-import { StationStructure } from './scene/StationStructure';
-import { StationProps } from './scene/StationProps';
-import { RealisticWater } from './scene/RealisticWater';
+import { Terrain } from './scene/Terrain';
+import { Station } from './scene/Station';
+import { WaterSystem } from './scene/WaterSystem';
 import { TechnicalAnnotations } from './scene/TechnicalAnnotations';
 import { TopBar } from './components/TopBar';
 import { StageBar } from './components/StageBar';
@@ -23,15 +22,32 @@ function StationScene() {
 
   return (
     <>
-      <hemisphereLight args={['#eef7ff', '#4a4035', 0.6]} />
-      <ambientLight intensity={0.5} />
-      <directionalLight position={[12, 16, 8]} intensity={1.4} />
-      <directionalLight position={[-8, 10, -6]} intensity={0.4} color="#cce7ff" />
+      {/* Luz de céu aberto: hemisférica fria por cima, quente refletida do solo por baixo. */}
+      <hemisphereLight args={['#dceeff', '#3b3226', 0.62]} />
+      <ambientLight intensity={0.34} />
+      {/* Sol principal — é ele que projeta as sombras que assentam a estação no terreno. */}
+      <directionalLight
+        position={[-16, 22, 14]}
+        intensity={1.55}
+        color='#fff4e2'
+        castShadow
+        shadow-mapSize={[2048, 2048]}
+        shadow-bias={-0.0006}
+        shadow-normalBias={0.02}
+        shadow-camera-left={-20}
+        shadow-camera-right={20}
+        shadow-camera-top={16}
+        shadow-camera-bottom={-16}
+        shadow-camera-near={0.5}
+        shadow-camera-far={70}
+      />
+      {/* Preenchimento frio vindo do vale, para o corte geológico não virar breu. */}
+      <directionalLight position={[14, 8, -12]} intensity={0.38} color='#bfe0ff' />
+
       <IsoCamera resetSignal={resetSignal} />
-      <HillsideTerrain />
-      <StationStructure />
-      <StationProps />
-      <RealisticWater />
+      <Terrain />
+      <Station />
+      <WaterSystem />
       <TechnicalAnnotations />
     </>
   );
@@ -55,6 +71,7 @@ export default function App() {
     >
       <div className="viewport">
         <Canvas
+          shadows
           dpr={[1, 1.35]}
           onPointerMissed={() => selectStage(null)}
           gl={{

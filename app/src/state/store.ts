@@ -31,6 +31,8 @@ interface StationStore {
   selectStage: (id: string | null) => void;
   hoverStage: (id: string | null) => void;
   toggleStageOpen: (id: string) => void;
+  openAllStages: () => void;
+  closeAllStages: () => void;
   toggleTechnicalOverlay: () => void;
   setWaterSpeed: (speed: number) => void;
   toggleDetails: () => void;
@@ -64,10 +66,13 @@ export const useStationStore = create<StationStore>((set) => ({
   setLayer: (layer) => set({ layer }),
   setScenario: (scenario) => set({ scenario }),
   setStageIndex: (index) => set({ stageIndex: Math.min(STAGES.length, Math.max(0, index)) }),
-  // Selecionar uma etapa abre o painel de detalhes automaticamente; em tela estreita só um painel por vez.
+  // Selecionar uma etapa ABRE o módulo correspondente na maquete (e fecha os demais: a estação
+  // é fechada por padrão, o foco é sempre num setor por vez) e abre o painel de detalhes.
+  // Em tela estreita, só um painel por vez.
   selectStage: (id) =>
     set((s) => ({
       selectedStageId: id,
+      openStages: id === null ? s.openStages : new Set([id]),
       detailsOpen: id !== null,
       indicatorsOpen: id !== null && isNarrow() ? false : s.indicatorsOpen,
     })),
@@ -79,6 +84,8 @@ export const useStationStore = create<StationStore>((set) => ({
       else next.add(id);
       return { openStages: next };
     }),
+  openAllStages: () => set({ openStages: new Set(STAGES.map((st) => st.id)) }),
+  closeAllStages: () => set({ openStages: new Set() }),
   toggleTechnicalOverlay: () => set((s) => ({ technicalOverlay: !s.technicalOverlay })),
   setWaterSpeed: (speed) => set({ waterSpeed: speed }),
   toggleDetails: () =>

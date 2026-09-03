@@ -16,6 +16,9 @@ export function TopBar() {
   const startTutorial = useStationStore((s) => s.startTutorial);
   const technicalOverlay = useStationStore((s) => s.technicalOverlay);
   const toggleTechnicalOverlay = useStationStore((s) => s.toggleTechnicalOverlay);
+  const anyOpen = useStationStore((s) => s.openStages.size > 0);
+  const openAllStages = useStationStore((s) => s.openAllStages);
+  const closeAllStages = useStationStore((s) => s.closeAllStages);
 
   return (
     <header className="topbar glass">
@@ -62,6 +65,20 @@ export function TopBar() {
           </button>
         </div>
         <div className="action-group camera-actions">
+          <button
+            type="button"
+            className="ghost-btn"
+            data-active={anyOpen}
+            onClick={anyOpen ? closeAllStages : openAllStages}
+            title={
+              anyOpen
+                ? 'Fechar todos os módulos e voltar à estação fechada'
+                : 'Abrir os 7 módulos de uma vez (vista em corte da estação inteira)'
+            }
+          >
+            <span className="label-long">{anyOpen ? 'Fechar módulos' : 'Abrir módulos'}</span>
+            <span className="label-short">{anyOpen ? 'Fechar' : 'Abrir'}</span>
+          </button>
           <button
             type="button"
             className="ghost-btn"

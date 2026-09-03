@@ -2386,3 +2386,157 @@
   }
 }
 
+
+/* ------------------------------------------------------------------
+   Selos dos módulos na maquete 3D — o convite para abrir cada setor.
+   Sempre visíveis (não dependem da prancha técnica): são navegação,
+   não anotação de engenharia.
+------------------------------------------------------------------- */
+
+.module-badge {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  transform: translateY(0);
+  transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.module-badge:hover {
+  transform: translateY(-2px);
+}
+
+.badge-roman {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  color: #eef6f8;
+  background: rgba(12, 18, 22, 0.9);
+  border: 1.5px solid var(--tint, #3ea8cf);
+  box-shadow:
+    0 0 0 3px rgba(8, 12, 15, 0.55),
+    0 6px 16px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(6px);
+  transition: background 180ms ease, box-shadow 180ms ease, color 180ms ease;
+}
+
+.module-badge[data-open='true'] .badge-roman {
+  background: var(--tint, #3ea8cf);
+  color: #08131a;
+}
+
+.module-badge[data-active='true'] .badge-roman {
+  box-shadow:
+    0 0 0 3px rgba(8, 12, 15, 0.55),
+    0 0 18px color-mix(in srgb, var(--tint, #3ea8cf) 70%, transparent),
+    0 6px 16px rgba(0, 0, 0, 0.5);
+}
+
+.badge-name {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  margin-left: 7px;
+  padding: 4px 9px 4px 8px;
+  border-radius: 7px;
+  background: rgba(12, 18, 22, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-left: 2px solid var(--tint, #3ea8cf);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  font-size: 11px;
+  font-weight: 650;
+  color: var(--ink-primary);
+  animation: badge-in 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.badge-name small {
+  font-size: 8.5px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+@keyframes badge-in {
+  from {
+    opacity: 0;
+    transform: translateX(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* A cor da tag técnica passa a seguir a fase do módulo */
+.tech-stage-tag {
+  border-left: 2px solid var(--tint, #38bdf8);
+}
+
+.tech-stage-tag:hover,
+.tech-stage-tag.selected {
+  border-color: var(--tint, #38bdf8);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--tint, #38bdf8) 45%, transparent);
+}
+
+.tech-stage-tag .tag-number {
+  background: color-mix(in srgb, var(--tint, #38bdf8) 22%, transparent);
+  color: var(--tint, #38bdf8);
+  min-width: 20px;
+  text-align: center;
+}
+
+/* ------------------------- controle de vazão ------------------------- */
+
+.flow-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.flow-control span {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+
+.flow-control input[type='range'] {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--accent);
+}
+
+@media (max-width: 900px) {
+  .badge-roman {
+    width: 22px;
+    height: 22px;
+    font-size: 10px;
+  }
+
+  .badge-name {
+    font-size: 10px;
+    padding: 3px 7px;
+  }
+
+  .badge-name small {
+    display: none;
+  }
+}
