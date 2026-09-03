@@ -60,6 +60,35 @@ export function StagePanel() {
         </div>
       )}
 
+      {/* Bloco de Verificação Singular de Potabilidade do Módulo */}
+      {stage.singularVerification && (
+        <div className={`verification-gate-card ${stage.singularVerification.isFinalAudit ? 'final-audit' : ''}`}>
+          <div className="gate-header">
+            <span className="gate-badge">
+              {stage.singularVerification.isFinalAudit ? '★ AUDITORIA FINAL INTEGRADA' : '● VERIFICAÇÃO SINGULAR DO MÓDULO'}
+            </span>
+            <h4>{stage.singularVerification.target}</h4>
+          </div>
+          <div className="gate-body">
+            <div className="gate-row">
+              <span className="gate-label">Sensor in-loco:</span>
+              <span className="gate-val">{stage.singularVerification.sensor}</span>
+            </div>
+            <div className="gate-row">
+              <span className="gate-label">Critério de aprovação:</span>
+              <span className="gate-val">{stage.singularVerification.criterion}</span>
+            </div>
+          </div>
+          <div className="gate-footer">
+            {stage.singularVerification.isFinalAudit ? (
+              <span>✓ Atestado multiparâmetro de potabilidade (Portaria GM/MS nº 888/2021) antes da liberação final ao reservatório.</span>
+            ) : (
+              <span>→ Cada módulo executa sua verificação singular in-loco para atestar o tratamento específico antes do envio à próxima cota.</span>
+            )}
+          </div>
+        </div>
+      )}
+
       {hydraulics && (
         <div className="hydraulics-block">
           <h3>Cálculo de vazão desta etapa</h3>

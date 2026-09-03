@@ -23,7 +23,7 @@ export function TopBar() {
         <span className="brand-mark" aria-hidden="true" />
         <div>
           <h1>ESTAS</h1>
-          <p>Estação Setorizada de Tratamento de Águas Supercontaminadas · unidade modular</p>
+          <p className="brand-subtitle">Estação Setorizada de Tratamento de Águas Supercontaminadas · unidade modular</p>
         </div>
       </div>
 

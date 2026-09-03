@@ -81,10 +81,10 @@ export function TechnicalAnnotations() {
           className={`tech-stage-tag ${selectedStageId === 'filtracao' ? 'selected' : ''}`}
           onClick={() => selectStage('filtracao')}
         >
-          <span className="tag-number">FASE 1</span>
+          <span className="tag-number">1</span>
           <div className="tag-info">
-            <strong>FILTRAÇÃO FÍSICA E MAGNÉTICA</strong>
-            <small>Brita, areia quartzosa, antracito e eletroímãs</small>
+            <strong>FILTRAÇÃO E ELETROÍMÃS</strong>
+            <small className="hide-on-mobile">Brita, areia, antracito e campo magnético</small>
           </div>
         </div>
       </Html>
@@ -109,10 +109,10 @@ export function TechnicalAnnotations() {
           className={`tech-stage-tag ${selectedStageId === 'biossorcao' ? 'selected' : ''}`}
           onClick={() => selectStage('biossorcao')}
         >
-          <span className="tag-number">FASE 2</span>
+          <span className="tag-number">2</span>
           <div className="tag-info">
-            <strong>CASA DO BIOSSURFACTANTE</strong>
-            <small>Reatores de contato (30 min) · Remoção de Pb, Hg, Cr, Cd</small>
+            <strong>BIOSSURFACTANTES</strong>
+            <small className="hide-on-mobile">Reatores de contato · Remoção de Pb, Hg, Cr, Cd</small>
           </div>
         </div>
       </Html>
@@ -135,10 +135,10 @@ export function TechnicalAnnotations() {
           className={`tech-stage-tag ${selectedStageId === 'desgaseificacao' ? 'selected' : ''}`}
           onClick={() => selectStage('desgaseificacao')}
         >
-          <span className="tag-number">FASE 3</span>
+          <span className="tag-number">3</span>
           <div className="tag-info">
-            <strong>DESGASEIFICAÇÃO EM CASCATA</strong>
-            <small>Exaustão de CO2 e gases sulfetados (H2S)</small>
+            <strong>DESGASEIFICAÇÃO</strong>
+            <small className="hide-on-mobile">Cascata de aeração e exaustão de gases</small>
           </div>
         </div>
       </Html>
@@ -149,10 +149,10 @@ export function TechnicalAnnotations() {
           className={`tech-stage-tag ${selectedStageId === 'desinfeccao' ? 'selected' : ''}`}
           onClick={() => selectStage('desinfeccao')}
         >
-          <span className="tag-number">FASE 4</span>
+          <span className="tag-number">4</span>
           <div className="tag-info">
-            <strong>DESINFECÇÃO FOTÔNICA E NANO</strong>
-            <small>Câmaras UV-C germicidas · Membranas cerâmicas / prata</small>
+            <strong>DESINFECÇÃO UV-C E NANO</strong>
+            <small className="hide-on-mobile">Lâmpadas germicidas e membranas de prata</small>
           </div>
         </div>
       </Html>
@@ -163,10 +163,10 @@ export function TechnicalAnnotations() {
           className={`tech-stage-tag ${selectedStageId === 'armazenamento' ? 'selected' : ''}`}
           onClick={() => selectStage('armazenamento')}
         >
-          <span className="tag-number">FASE 5</span>
+          <span className="tag-number">5</span>
           <div className="tag-info">
-            <strong>RESERVATÓRIO E DISTRIBUIÇÃO</strong>
-            <small>Remineralização, estabilização de pH · 360.000 L/h</small>
+            <strong>RESERVATÓRIO POTÁVEL</strong>
+            <small className="hide-on-mobile">Remineralização e saída pública · 360.000 L/h</small>
           </div>
         </div>
       </Html>

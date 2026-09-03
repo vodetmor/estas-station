@@ -12,19 +12,26 @@ export function DetailsPanel() {
   const [tab, setTab] = useState<'modulo' | 'alertas'>('modulo');
   const selectedStageId = useStationStore((s) => s.selectedStageId);
   const toggleDetails = useStationStore((s) => s.toggleDetails);
+  const selectStage = useStationStore((s) => s.selectStage);
   const toggleOpen = useStationStore((s) => s.toggleStageOpen);
   const openStages = useStationStore((s) => s.openStages);
   const stage = STAGES.find((s) => s.id === selectedStageId) ?? null;
   const isOpen = stage ? openStages.has(stage.id) : false;
 
+  const handleClose = () => {
+    toggleDetails();
+    selectStage(null);
+  };
+
   return (
     <div className="panel-shell">
+      <div className="mobile-sheet-handle" onClick={handleClose} title="Fechar painel" />
       <header className="panel-header">
         <div>
           <h2>{stage ? stage.shortLabel : 'Diagnóstico'}</h2>
-          <p>{stage ? `Etapa ${stage.order} de 7 · ${stage.equipment}` : 'Selecione um módulo na estação'}</p>
+          <p>{stage ? `Etapa ${stage.order} de 7 · ${stage.equipment}` : 'Toque em qualquer módulo da estação'}</p>
         </div>
-        <button type="button" className="panel-close" onClick={toggleDetails} aria-label="Fechar painel">
+        <button type="button" className="panel-close" onClick={handleClose} aria-label="Fechar painel">
           ×
         </button>
       </header>

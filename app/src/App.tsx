@@ -44,6 +44,7 @@ export default function App() {
   const toggleDetails = useStationStore((s) => s.toggleDetails);
   const toggleIndicators = useStationStore((s) => s.toggleIndicators);
   const technicalOverlay = useStationStore((s) => s.technicalOverlay);
+  const selectStage = useStationStore((s) => s.selectStage);
 
   return (
     <div
@@ -55,6 +56,7 @@ export default function App() {
       <div className="viewport">
         <Canvas
           dpr={[1, 1.35]}
+          onPointerMissed={() => selectStage(null)}
           gl={{
             antialias: true,
             powerPreference: 'high-performance',

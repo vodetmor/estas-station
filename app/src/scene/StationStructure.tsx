@@ -187,6 +187,21 @@ export function StationStructure() {
             <meshStandardMaterial color={rimColor} roughness={0.6} />
           </mesh>
         </group>
+        {/* Canaleta / Aqueduto de concreto conectando a saída da Fase 2 à entrada da Cascata (Fase 3) */}
+        <group position={[0.1, 1.78, 0.5]} rotation={[0, 0.8, -0.15]}>
+          <mesh position={[0, -0.06, 0]} receiveShadow>
+            <boxGeometry args={[1.5, 0.1, 0.55]} />
+            <meshStandardMaterial color={concreteColor} roughness={0.7} />
+          </mesh>
+          <mesh position={[0, 0.1, -0.25]} castShadow>
+            <boxGeometry args={[1.5, 0.22, 0.08]} />
+            <meshStandardMaterial color={rimColor} roughness={0.65} />
+          </mesh>
+          <mesh position={[0, 0.1, 0.25]} castShadow>
+            <boxGeometry args={[1.5, 0.22, 0.08]} />
+            <meshStandardMaterial color={rimColor} roughness={0.65} />
+          </mesh>
+        </group>
       </group>
 
       {/* ========================================================================= */}
@@ -244,6 +259,22 @@ export function StationStructure() {
             </mesh>
           </group>
         </group>
+
+        {/* Bacia coletora e canaleta de concreto conectando o fim da Cascata (Fase 3) à entrada da Fase 4 */}
+        <group position={[1.85, 0.72, 1.05]} rotation={[0, -0.65, -0.1]}>
+          <mesh position={[0, -0.05, 0]} receiveShadow>
+            <boxGeometry args={[1.2, 0.1, 0.55]} />
+            <meshStandardMaterial color={concreteColor} roughness={0.7} />
+          </mesh>
+          <mesh position={[0, 0.1, -0.25]} castShadow>
+            <boxGeometry args={[1.2, 0.2, 0.08]} />
+            <meshStandardMaterial color={rimColor} roughness={0.65} />
+          </mesh>
+          <mesh position={[0, 0.1, 0.25]} castShadow>
+            <boxGeometry args={[1.2, 0.2, 0.08]} />
+            <meshStandardMaterial color={rimColor} roughness={0.65} />
+          </mesh>
+        </group>
       </group>
 
       {/* ========================================================================= */}
@@ -273,30 +304,40 @@ export function StationStructure() {
               {/* Parede traseira */}
               <mesh position={[0, 0.12, -0.42]} castShadow receiveShadow>
                 <boxGeometry args={[2.7, 0.45, 0.08]} />
-                <meshStandardMaterial color={concreteColor} roughness={0.7} />
+                <meshStandardMaterial color={concreteDark} roughness={0.7} />
               </mesh>
-              {/* Parede frontal cortada (para ver os tubos UV-C e água) */}
-              <mesh position={[0, 0.0, 0.42]} castShadow receiveShadow>
-                <boxGeometry args={[2.7, 0.22, 0.08]} />
+              {/* Parede frontal */}
+              <mesh position={[0, 0.08, 0.42]} castShadow receiveShadow>
+                <boxGeometry args={[2.7, 0.38, 0.08]} />
                 <meshStandardMaterial color={rimColor} roughness={0.65} />
               </mesh>
             </group>
           ))}
 
-          {/* Parede divisória central entre os dois canais */}
-          <mesh position={[0, 0.15, 0]} castShadow>
-            <boxGeometry args={[2.7, 0.5, 0.12]} />
-            <meshStandardMaterial color={concreteDark} roughness={0.7} />
-          </mesh>
-
-          {/* Cabeçote de entrada e saída com conexões flangeadas */}
-          <mesh position={[-1.38, 0.15, 0]} castShadow>
-            <boxGeometry args={[0.12, 0.5, 2.1]} />
+          {/* Muro divisor e vertedouros de saída */}
+          <mesh position={[-1.38, 0.08, 0]} castShadow>
+            <boxGeometry args={[0.12, 0.35, 2.1]} />
             <meshStandardMaterial color={concreteColor} roughness={0.7} />
           </mesh>
           <mesh position={[1.38, 0.08, 0]} castShadow>
             <boxGeometry args={[0.12, 0.35, 2.1]} />
             <meshStandardMaterial color={concreteColor} roughness={0.7} />
+          </mesh>
+        </group>
+
+        {/* Aqueduto de concreto e vertedouro polido conectando a saída da Fase 4 diretamente ao Reservatório (Fase 5) */}
+        <group position={[5.05, 0.58, -0.05]} rotation={[0, 0.45, -0.2]}>
+          <mesh position={[0, -0.05, 0]} receiveShadow>
+            <boxGeometry args={[1.1, 0.1, 0.65]} />
+            <meshStandardMaterial color={concreteColor} roughness={0.7} />
+          </mesh>
+          <mesh position={[0, 0.1, -0.3]} castShadow>
+            <boxGeometry args={[1.1, 0.2, 0.08]} />
+            <meshStandardMaterial color={rimColor} roughness={0.65} />
+          </mesh>
+          <mesh position={[0, 0.1, 0.3]} castShadow>
+            <boxGeometry args={[1.1, 0.2, 0.08]} />
+            <meshStandardMaterial color={rimColor} roughness={0.65} />
           </mesh>
         </group>
       </group>
