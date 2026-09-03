@@ -14,6 +14,8 @@ export function TopBar() {
   const setStoryOpen = useStationStore((s) => s.setStoryOpen);
   const setHowOpen = useStationStore((s) => s.setHowOpen);
   const startTutorial = useStationStore((s) => s.startTutorial);
+  const technicalOverlay = useStationStore((s) => s.technicalOverlay);
+  const toggleTechnicalOverlay = useStationStore((s) => s.toggleTechnicalOverlay);
 
   return (
     <header className="topbar glass">
@@ -72,6 +74,15 @@ export function TopBar() {
           <button type="button" className="ghost-btn" onClick={resetCamera} title="Voltar à vista inicial">
             <span className="label-long">Recentrar</span>
             <span className="label-short">Centrar</span>
+          </button>
+          <button
+            type="button"
+            className="ghost-btn"
+            data-active={technicalOverlay}
+            onClick={toggleTechnicalOverlay}
+            title="Mostrar ou ocultar rótulos, cotas e prancha técnica de engenharia"
+          >
+            {technicalOverlay ? 'Planta: On' : 'Planta: Off'}
           </button>
           <button
             type="button"

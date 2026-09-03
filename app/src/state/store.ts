@@ -23,12 +23,16 @@ interface StationStore {
   howOpen: boolean;
   tutorialStep: number | null;
   cameraResetSignal: number;
+  technicalOverlay: boolean;
+  waterSpeed: number;
   setLayer: (layer: LayerId) => void;
   setScenario: (scenario: ScenarioId) => void;
   setStageIndex: (index: number) => void;
   selectStage: (id: string | null) => void;
   hoverStage: (id: string | null) => void;
   toggleStageOpen: (id: string) => void;
+  toggleTechnicalOverlay: () => void;
+  setWaterSpeed: (speed: number) => void;
   toggleDetails: () => void;
   toggleIndicators: () => void;
   toggleCleanMode: () => void;
@@ -55,6 +59,8 @@ export const useStationStore = create<StationStore>((set) => ({
   howOpen: false,
   tutorialStep: 0,
   cameraResetSignal: 0,
+  technicalOverlay: true,
+  waterSpeed: 1,
   setLayer: (layer) => set({ layer }),
   setScenario: (scenario) => set({ scenario }),
   setStageIndex: (index) => set({ stageIndex: Math.min(STAGES.length, Math.max(0, index)) }),
@@ -73,6 +79,8 @@ export const useStationStore = create<StationStore>((set) => ({
       else next.add(id);
       return { openStages: next };
     }),
+  toggleTechnicalOverlay: () => set((s) => ({ technicalOverlay: !s.technicalOverlay })),
+  setWaterSpeed: (speed) => set({ waterSpeed: speed }),
   toggleDetails: () =>
     set((s) => {
       const open = !s.detailsOpen;

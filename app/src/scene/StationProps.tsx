@@ -1,284 +1,311 @@
-import { useMemo, useRef } from 'react';
+import { useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
-import { STAGES, type StageId } from '../data/stationData';
-import { centerOfStage, vRangeOfStage } from './stationLayout';
-import { uvToWorldXZ, surfaceY, STATION_WIDTH } from './stationConfig';
-import { useStationStore } from '../state/store';
 
-// Cada etapa vem com uma "casca fechada" (como a estação apareceria de verdade — módulos
-// selados) e um conjunto de peças internas que só aparecem quando o módulo está "aberto"
-// (clique -> toggleStageOpen). É a interação central pedida: a imagem de referência mostra os
-// módulos em corte para fins didáticos; no app, o padrão é fechado, e abrir é uma ação do usuário.
+/**
+ * Equipamentos eletromecânicos, químicos e biológicos internos da ESTAS.
+ * Visíveis por padrão na maquete em corte (como na planta técnica de referência):
+ * - Fase 1: Camadas do leito filtrante (brita, areia, antracito), 3 eletroímãs industriais;
+ * - Fase 2: Agitadores mecânicos rotativos, telas/painéis de bio-sorção, dosador de biossurfactantes;
+ * - Fase 3: Coifa e chaminé do sistema de exaustão de gases (CO2/H2S);
+ * - Fase 4: Tubos emissores UV-C com brilho violáceo e racks de membranas cerâmicas com AgNPs;
+ * - Fase 5: Cartuchos minerais de calcita/dolomita, barramento de pH e tubulação de distribuição pública.
+ */
+export function StationProps() {
+  const agitatorRef1 = useRef<THREE.Group>(null);
+  const agitatorRef2 = useRef<THREE.Group>(null);
+  const uvLampsRef = useRef<THREE.Group>(null);
 
-function stageWorldBox(stageId: StageId) {
-  const { v0, v1 } = vRangeOfStage(stageId);
-  const { u, v } = centerOfStage(stageId);
-  const [cx, cz] = uvToWorldXZ(u, v);
-  const [x0] = uvToWorldXZ(0, v0);
-  const [x1] = uvToWorldXZ(0, v1);
-  const length = Math.abs(x1 - x0);
-  const y = surfaceY(0.5, v);
-  return { cx, cz, y, length, width: STATION_WIDTH * 0.86 };
-}
+  // Animação dos agitadores mecânicos dos tanques de biossurfactante
+  useFrame(({ clock }, delta) => {
+    if (agitatorRef1.current) agitatorRef1.current.rotation.y += delta * 1.5;
+    if (agitatorRef2.current) agitatorRef2.current.rotation.y -= delta * 1.2;
 
-function ClosedShell({ stageId, color }: { stageId: StageId; color: string }) {
-  const { cx, cz, y, length, width } = stageWorldBox(stageId);
-  const height = 0.5;
-  return (
-    <group position={[cx, y, cz]}>
-      <mesh position={[0, height / 2, 0]} castShadow>
-        <boxGeometry args={[length * 0.94, height, width]} />
-        <meshStandardMaterial color={color} roughness={0.6} metalness={0.15} />
-      </mesh>
-      <mesh position={[0, height + 0.015, 0]}>
-        <boxGeometry args={[length * 0.98, 0.03, width * 1.04]} />
-        <meshStandardMaterial color="#3a3f3d" roughness={0.7} />
-      </mesh>
-    </group>
-  );
-}
-
-function FiltracaoInternals() {
-  const { cx, cz, y, length, width } = stageWorldBox('filtracao');
-  const layers = [
-    { color: '#7d7568', h: 0.06 }, // brita
-    { color: '#c9b878', h: 0.05 }, // areia quartzosa
-    { color: '#2a2a28', h: 0.05 }, // antracito
-  ];
-  let stackY = 0.02;
-  return (
-    <group position={[cx, y, cz]}>
-      {layers.map((l, i) => {
-        const py = stackY + l.h / 2;
-        stackY += l.h + 0.01;
-        return (
-          <mesh key={i} position={[0, py, 0]}>
-            <boxGeometry args={[length * 0.7, l.h, width * 0.8]} />
-            <meshStandardMaterial color={l.color} roughness={0.95} />
-          </mesh>
-        );
-      })}
-      {/* grades metálicas de entrada */}
-      {[-1, 0, 1].map((i) => (
-        <mesh key={i} position={[-length * 0.35, 0.28, i * width * 0.22]}>
-          <boxGeometry args={[0.02, 0.4, width * 0.7]} />
-          <meshStandardMaterial color="#c7cbc8" metalness={0.8} roughness={0.35} />
-        </mesh>
-      ))}
-      {/* eletroímãs */}
-      {[-0.2, 0.15].map((dx, i) => (
-        <mesh key={i} position={[length * dx, 0.25, 0]}>
-          <cylinderGeometry args={[0.09, 0.09, 0.3, 12]} />
-          <meshStandardMaterial color="#2f3a4a" metalness={0.7} roughness={0.3} />
-        </mesh>
-      ))}
-    </group>
-  );
-}
-
-function BiossorcaoInternals() {
-  const { cx, cz, y, length, width } = stageWorldBox('biossorcao');
-  const agitatorRef1 = useRef<THREE.Mesh>(null);
-  const agitatorRef2 = useRef<THREE.Mesh>(null);
-  useFrame((_, delta) => {
-    if (agitatorRef1.current) agitatorRef1.current.rotation.y += delta * 1.4;
-    if (agitatorRef2.current) agitatorRef2.current.rotation.y += delta * 1.1;
-  });
-
-  const tankOffsets = [-length * 0.28, length * 0.1];
-  const panelX = length * 0.4;
-
-  return (
-    <group position={[cx, y, cz]}>
-      {tankOffsets.map((dx, i) => (
-        <group key={i} position={[dx, 0, 0]}>
-          <mesh position={[0, 0.22, 0]}>
-            <boxGeometry args={[length * 0.28, 0.44, width * 0.75]} />
-            <meshStandardMaterial color="#3f6b82" roughness={0.5} metalness={0.1} transparent opacity={0.88} />
-          </mesh>
-          <mesh ref={i === 0 ? agitatorRef1 : agitatorRef2} position={[0, 0.42, 0]}>
-            <boxGeometry args={[length * 0.22, 0.02, 0.05]} />
-            <meshStandardMaterial color="#dfe4e2" metalness={0.6} roughness={0.4} />
-          </mesh>
-        </group>
-      ))}
-      {/* painéis de biossorção: ripas verticais em série */}
-      {Array.from({ length: 6 }).map((_, i) => (
-        <mesh key={i} position={[panelX, 0.28, (i - 2.5) * (width * 0.15)]}>
-          <boxGeometry args={[0.02, 0.5, width * 0.11]} />
-          <meshStandardMaterial color="#2f6b52" roughness={0.8} />
-        </mesh>
-      ))}
-    </group>
-  );
-}
-
-function DesgaseificacaoInternals() {
-  const { cx, cz, y } = stageWorldBox('desgaseificacao');
-  return (
-    <group position={[cx, y, cz]}>
-      <mesh position={[0, 0.9, 0]}>
-        <cylinderGeometry args={[0.1, 0.13, 1.3, 10]} />
-        <meshStandardMaterial color="#aab0ad" metalness={0.4} roughness={0.5} />
-      </mesh>
-      <mesh position={[0, 1.58, 0]}>
-        <coneGeometry args={[0.16, 0.22, 10]} />
-        <meshStandardMaterial color="#8f9592" metalness={0.4} roughness={0.6} />
-      </mesh>
-    </group>
-  );
-}
-
-function DesinfeccaoInternals() {
-  const { cx, cz, y, length, width } = stageWorldBox('desinfeccao');
-  const lamps = 5;
-  const pulseRef = useRef<THREE.Group>(null);
-  useFrame(({ clock }) => {
-    if (pulseRef.current) {
-      const s = 1 + Math.sin(clock.getElapsedTime() * 6) * 0.03;
-      pulseRef.current.scale.set(s, 1, s);
+    // Pulsação sutil da radiação UV-C germicida
+    if (uvLampsRef.current) {
+      const pulse = 1.6 + Math.sin(clock.getElapsedTime() * 4) * 0.25;
+      uvLampsRef.current.children.forEach((child) => {
+        if (child instanceof THREE.Mesh && child.material instanceof THREE.MeshStandardMaterial) {
+          child.material.emissiveIntensity = pulse;
+        }
+      });
     }
   });
+
   return (
-    <group position={[cx, y, cz]}>
-      <mesh position={[0, 0.22, 0]}>
-        <boxGeometry args={[length * 0.8, 0.44, width * 0.8]} />
-        <meshStandardMaterial color="#c9c4e0" roughness={0.3} metalness={0.1} transparent opacity={0.35} />
-      </mesh>
-      <group ref={pulseRef}>
-        {Array.from({ length: lamps }).map((_, i) => (
-          <mesh key={i} position={[(i - (lamps - 1) / 2) * (length * 0.14), 0.22, 0]}>
-            <cylinderGeometry args={[0.025, 0.025, width * 0.7, 8]} />
-            <meshStandardMaterial color="#a06bd6" emissive="#8a3fe0" emissiveIntensity={1.4} />
+    <group name="station-props">
+      {/* ========================================================================= */}
+      {/* FASE 1: FILTRAÇÃO FÍSICA E MAGNÉTICA                                      */}
+      {/* ========================================================================= */}
+      <group position={[-6.2, 3.2, -1.2]}>
+        {/* Grades metálicas de retenção de sólidos grosseiros */}
+        {[-0.8, -0.6, -0.4, -0.2, 0, 0.2, 0.4, 0.6, 0.8].map((dz, i) => (
+          <mesh key={i} position={[-1.0, 0.2, dz]}>
+            <boxGeometry args={[0.02, 0.45, 0.02]} />
+            <meshStandardMaterial color="#b0b5b3" metalness={0.8} roughness={0.3} />
           </mesh>
         ))}
-      </group>
-      {/* membranas cerâmicas */}
-      <mesh position={[length * 0.35, 0.22, 0]} rotation={[0, 0, Math.PI / 2]}>
-        <cylinderGeometry args={[0.16, 0.16, 0.06, 16]} />
-        <meshStandardMaterial color="#e7e2d6" roughness={0.6} />
-      </mesh>
-    </group>
-  );
-}
 
-function RemineralizacaoInternals() {
-  const { cx, cz, y, length, width } = stageWorldBox('remineralizacao');
-  return (
-    <group position={[cx, y, cz]}>
-      {[-1, 0, 1].map((i) => (
-        <mesh key={i} position={[i * length * 0.2, 0.24, 0]}>
-          <cylinderGeometry args={[0.11, 0.11, 0.42, 12]} />
-          <meshStandardMaterial color="#c7bfa3" roughness={0.7} />
+        {/* Leito filtrante tríplice estratificado com 3 camadas visíveis */}
+        {/* Camada inferior: Brita graduada */}
+        <mesh position={[0.05, -0.2, 0]}>
+          <boxGeometry args={[2.0, 0.16, 1.9]} />
+          <meshStandardMaterial color="#635c52" roughness={0.95} />
         </mesh>
-      ))}
-      <mesh position={[length * 0.35, 0.16, 0]}>
-        <boxGeometry args={[length * 0.22, 0.3, width * 0.7]} />
-        <meshStandardMaterial color="#4c7f6f" roughness={0.5} transparent opacity={0.85} />
-      </mesh>
-    </group>
-  );
-}
+        {/* Camada intermediária: Areia quartzosa */}
+        <mesh position={[0.05, -0.06, 0]}>
+          <boxGeometry args={[2.0, 0.12, 1.9]} />
+          <meshStandardMaterial color="#d4b46a" roughness={0.9} />
+        </mesh>
+        {/* Camada superior: Carvão antracito */}
+        <mesh position={[0.05, 0.04, 0]}>
+          <boxGeometry args={[2.0, 0.08, 1.9]} />
+          <meshStandardMaterial color="#222324" roughness={0.85} />
+        </mesh>
+      </group>
 
-function MonitoramentoInternals() {
-  const { cx, cz, y, width } = stageWorldBox('monitoramento');
-  const lightsRef = useRef<THREE.InstancedMesh>(null);
-  const lightColors = useMemo(() => ['#3ecf8e', '#3ecf8e', '#fab219', '#3ecf8e'], []);
-
-  useFrame(({ clock }) => {
-    if (!lightsRef.current) return;
-    const c = new THREE.Color();
-    const t = clock.getElapsedTime();
-    lightColors.forEach((hex, i) => {
-      c.set(hex);
-      const pulse = 0.6 + Math.sin(t * 3 + i) * 0.4;
-      c.multiplyScalar(pulse);
-      lightsRef.current!.setColorAt(i, c);
-    });
-    if (lightsRef.current.instanceColor) lightsRef.current.instanceColor.needsUpdate = true;
-  });
-
-  const mesh = useMemo(() => {
-    const geo = new THREE.SphereGeometry(0.025, 8, 8);
-    const mat = new THREE.MeshStandardMaterial({ emissive: '#ffffff', emissiveIntensity: 1 });
-    const m = new THREE.InstancedMesh(geo, mat, lightColors.length);
-    const dummy = new THREE.Object3D();
-    lightColors.forEach((_, i) => {
-      dummy.position.set((i - 1.5) * 0.09, 0.42, 0);
-      dummy.updateMatrix();
-      m.setMatrixAt(i, dummy.matrix);
-    });
-    return m;
-  }, [lightColors]);
-
-  return (
-    <group position={[cx, y, cz]}>
-      <mesh position={[0, 0.2, 0]}>
-        <boxGeometry args={[0.5, 0.4, width * 0.5]} />
-        <meshStandardMaterial color="#4a4f4d" roughness={0.6} />
-      </mesh>
-      <primitive ref={lightsRef} object={mesh} />
-    </group>
-  );
-}
-
-function ArmazenamentoInternals() {
-  const { cx, cz, y, length, width } = stageWorldBox('armazenamento');
-  return (
-    <group position={[cx, y, cz]}>
-      <mesh position={[0, 0.3, 0]}>
-        <boxGeometry args={[length * 0.7, 0.6, width * 0.8]} />
-        <meshStandardMaterial color="#7d9baa" roughness={0.4} metalness={0.2} transparent opacity={0.35} />
-      </mesh>
-      <mesh position={[0, 0.55, 0]}>
-        <boxGeometry args={[length * 0.68, 0.03, width * 0.78]} />
-        <meshStandardMaterial color="#3f8fb0" roughness={0.15} metalness={0.3} />
-      </mesh>
-      {/* tubulação de distribuição saindo da base */}
-      <mesh position={[length * 0.42, -0.05, 0]} rotation={[0, 0, Math.PI / 2]}>
-        <cylinderGeometry args={[0.06, 0.06, 0.8, 10]} />
-        <meshStandardMaterial color="#8a8f8c" metalness={0.6} roughness={0.4} />
-      </mesh>
-    </group>
-  );
-}
-
-const INTERNALS: Record<StageId, () => React.JSX.Element> = {
-  filtracao: FiltracaoInternals,
-  biossorcao: BiossorcaoInternals,
-  desgaseificacao: DesgaseificacaoInternals,
-  desinfeccao: DesinfeccaoInternals,
-  remineralizacao: RemineralizacaoInternals,
-  monitoramento: MonitoramentoInternals,
-  armazenamento: ArmazenamentoInternals,
-};
-
-const SHELL_COLOR: Record<StageId, string> = {
-  filtracao: '#8a7256',
-  biossorcao: '#5b7a8c',
-  desgaseificacao: '#9aa0a0',
-  desinfeccao: '#8a7aa8',
-  remineralizacao: '#6f8a78',
-  monitoramento: '#7a7f82',
-  armazenamento: '#3f7a96',
-};
-
-export function StationProps() {
-  const openStages = useStationStore((s) => s.openStages);
-
-  return (
-    <group>
-      {STAGES.map((stage) => {
-        const isOpen = openStages.has(stage.id);
-        const Internals = INTERNALS[stage.id];
-        return (
-          <group key={stage.id}>
-            {!isOpen && <ClosedShell stageId={stage.id} color={SHELL_COLOR[stage.id]} />}
-            {isOpen && <Internals />}
+      {/* Conjunto de 3 Eletroímãs de Alta Intensidade */}
+      <group position={[-4.3, 2.9, -0.9]}>
+        {[-0.75, 0, 0.75].map((dz, i) => (
+          <group key={i} position={[0, 0.12, dz]}>
+            {/* Núcleo ferromagnético central */}
+            <mesh position={[0, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+              <cylinderGeometry args={[0.13, 0.13, 0.7, 16]} />
+              <meshStandardMaterial color="#2d333b" metalness={0.75} roughness={0.3} />
+            </mesh>
+            {/* Bobina de enrolamento de cobre de alta indução */}
+            <mesh position={[0, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+              <cylinderGeometry args={[0.18, 0.18, 0.46, 16]} />
+              <meshStandardMaterial color="#b86d38" metalness={0.85} roughness={0.25} />
+            </mesh>
+            {/* Suporte de fixação e cabeçote elétrico com LED de status */}
+            <mesh position={[0, 0.22, 0]}>
+              <boxGeometry args={[0.2, 0.16, 0.2]} />
+              <meshStandardMaterial color="#1f2329" metalness={0.6} roughness={0.4} />
+            </mesh>
+            <mesh position={[0, 0.32, 0]}>
+              <sphereGeometry args={[0.03, 8, 8]} />
+              <meshStandardMaterial color="#22c55e" emissive="#22c55e" emissiveIntensity={1.8} />
+            </mesh>
           </group>
-        );
-      })}
+        ))}
+      </group>
+
+      {/* ========================================================================= */}
+      {/* FASE 2: CASA DO BIOSSURFACTANTE (REATORES & PAINÉIS DE BIO-SORÇÃO)        */}
+      {/* ========================================================================= */}
+      <group position={[-1.2, 1.9, -0.8]}>
+        {/* Agitador mecânico 1 (Tanque A) */}
+        <group ref={agitatorRef1} position={[-0.9, 0.15, -0.2]}>
+          {/* Eixo vertical */}
+          <mesh position={[0, 0.15, 0]}>
+            <cylinderGeometry args={[0.025, 0.025, 0.8, 12]} />
+            <meshStandardMaterial color="#c2c7c5" metalness={0.8} roughness={0.2} />
+          </mesh>
+          {/* Pás do rotor/impelidor */}
+          {[-1, 1].map((dir, i) => (
+            <mesh key={i} position={[dir * 0.22, -0.2, 0]} rotation={[0.2, 0, 0]}>
+              <boxGeometry args={[0.38, 0.1, 0.02]} />
+              <meshStandardMaterial color="#3b6978" metalness={0.6} roughness={0.4} />
+            </mesh>
+          ))}
+          {/* Pás transversais */}
+          {[-1, 1].map((dir, i) => (
+            <mesh key={i} position={[0, -0.2, dir * 0.22]} rotation={[0, 0, 0.2]}>
+              <boxGeometry args={[0.02, 0.1, 0.38]} />
+              <meshStandardMaterial color="#3b6978" metalness={0.6} roughness={0.4} />
+            </mesh>
+          ))}
+        </group>
+        {/* Motor de acionamento do agitador 1 */}
+        <mesh position={[-0.9, 0.72, -0.2]}>
+          <cylinderGeometry args={[0.08, 0.08, 0.18, 12]} />
+          <meshStandardMaterial color="#1f4b59" metalness={0.5} roughness={0.4} />
+        </mesh>
+
+        {/* Agitador mecânico 2 (Tanque B) */}
+        <group ref={agitatorRef2} position={[0.9, 0.15, 0.2]}>
+          <mesh position={[0, 0.15, 0]}>
+            <cylinderGeometry args={[0.025, 0.025, 0.8, 12]} />
+            <meshStandardMaterial color="#c2c7c5" metalness={0.8} roughness={0.2} />
+          </mesh>
+          {[-1, 1].map((dir, i) => (
+            <mesh key={i} position={[dir * 0.22, -0.2, 0]} rotation={[-0.2, 0, 0]}>
+              <boxGeometry args={[0.38, 0.1, 0.02]} />
+              <meshStandardMaterial color="#3b6978" metalness={0.6} roughness={0.4} />
+            </mesh>
+          ))}
+        </group>
+        {/* Motor de acionamento do agitador 2 */}
+        <mesh position={[0.9, 0.72, 0.2]}>
+          <cylinderGeometry args={[0.08, 0.08, 0.18, 12]} />
+          <meshStandardMaterial color="#1f4b59" metalness={0.5} roughness={0.4} />
+        </mesh>
+
+        {/* Painéis verticais de bio-sorção imobilizada com biossurfactantes */}
+        {/* Painel montado na parede traseira */}
+        <mesh position={[-0.9, 0.1, -1.14]}>
+          <boxGeometry args={[1.1, 0.65, 0.04]} />
+          <meshStandardMaterial color="#2d7350" roughness={0.8} />
+        </mesh>
+        <mesh position={[0.9, 0.1, -1.14]}>
+          <boxGeometry args={[1.1, 0.65, 0.04]} />
+          <meshStandardMaterial color="#2d7350" roughness={0.8} />
+        </mesh>
+        {/* Painéis montados nas paredes defletoras */}
+        <mesh position={[-0.49, 0.1, -0.2]}>
+          <boxGeometry args={[0.03, 0.6, 1.4]} />
+          <meshStandardMaterial color="#246344" roughness={0.8} />
+        </mesh>
+        <mesh position={[0.69, 0.1, 0.2]}>
+          <boxGeometry args={[0.03, 0.6, 1.4]} />
+          <meshStandardMaterial color="#246344" roughness={0.8} />
+        </mesh>
+
+        {/* Dosador de biossurfactantes com bomba dosadora e visor */}
+        <mesh position={[-1.3, 0.75, 0.9]}>
+          <cylinderGeometry args={[0.12, 0.12, 0.35, 12]} />
+          <meshStandardMaterial color="#3ea8cf" roughness={0.3} metalness={0.2} transparent opacity={0.85} />
+        </mesh>
+        <mesh position={[-1.3, 0.52, 0.9]}>
+          <boxGeometry args={[0.18, 0.15, 0.18]} />
+          <meshStandardMaterial color="#2b3133" metalness={0.6} roughness={0.4} />
+        </mesh>
+      </group>
+
+      {/* ========================================================================= */}
+      {/* FASE 3: TORRE DE DESGASEIFICAÇÃO EM CASCATA                               */}
+      {/* ========================================================================= */}
+      <group position={[0.8, 1.4, 1.5]}>
+        {/* Coifa metálica do sistema de exaustão sobre a cascata */}
+        <mesh position={[-0.5, 0.95, 0]}>
+          <boxGeometry args={[1.1, 0.15, 1.05]} />
+          <meshStandardMaterial color="#7a8280" metalness={0.6} roughness={0.4} />
+        </mesh>
+        <mesh position={[-0.5, 1.15, 0]}>
+          <coneGeometry args={[0.3, 0.35, 12]} />
+          <meshStandardMaterial color="#6a7270" metalness={0.6} roughness={0.4} />
+        </mesh>
+        {/* Duto de exaustão vertical com chapéu chinês para liberação segura de CO2/H2S */}
+        <mesh position={[-0.5, 1.6, 0]}>
+          <cylinderGeometry args={[0.09, 0.09, 0.6, 12]} />
+          <meshStandardMaterial color="#889290" metalness={0.65} roughness={0.35} />
+        </mesh>
+        <mesh position={[-0.5, 1.95, 0]}>
+          <coneGeometry args={[0.18, 0.1, 12]} />
+          <meshStandardMaterial color="#555c5a" metalness={0.7} roughness={0.3} />
+        </mesh>
+      </group>
+
+      {/* ========================================================================= */}
+      {/* FASE 4: DESINFECÇÃO FOTÔNICA E NANO (UV-C E MEMBRANAS DE AG/QUITOSANA)    */}
+      {/* ========================================================================= */}
+      <group position={[3.6, 0.75, 0.6]}>
+        {/* Lâmpadas germicidas UV-C (200-280 nm) com emissão violácea */}
+        <group ref={uvLampsRef}>
+          {[-0.55, 0.55].map((dz, ch) => (
+            <group key={ch} position={[0, 0, dz]}>
+              {[-0.15, 0.15].map((dy, l) => (
+                <mesh key={l} position={[0, dy, 0]} rotation={[0, 0, Math.PI / 2]}>
+                  <cylinderGeometry args={[0.022, 0.022, 2.2, 12]} />
+                  <meshStandardMaterial
+                    color="#b975ff"
+                    emissive="#9d4edd"
+                    emissiveIntensity={1.8}
+                    roughness={0.15}
+                  />
+                </mesh>
+              ))}
+            </group>
+          ))}
+        </group>
+
+        {/* Suportes e flanges das lâmpadas UV */}
+        {[-0.55, 0.55].map((dz, ch) => (
+          <group key={ch} position={[0, 0, dz]}>
+            {[-1.0, 0.0, 1.0].map((dx, i) => (
+              <mesh key={i} position={[dx, 0.0, 0]}>
+                <boxGeometry args={[0.06, 0.38, 0.78]} />
+                <meshStandardMaterial color="#aab0ad" metalness={0.8} roughness={0.25} />
+              </mesh>
+            ))}
+          </group>
+        ))}
+
+        {/* Módulos de membranas cerâmicas com nanopartículas de prata e quitosana */}
+        <group position={[1.2, 0.02, 0]}>
+          {[-0.55, 0.55].map((dz, ch) => (
+            <group key={ch} position={[0, 0, dz]}>
+              {[0, 1, 2, 3].map((k) => (
+                <mesh key={k} position={[k * 0.04 - 0.06, 0, 0]}>
+                  <boxGeometry args={[0.02, 0.34, 0.72]} />
+                  <meshStandardMaterial color="#dedad0" roughness={0.65} metalness={0.2} />
+                </mesh>
+              ))}
+            </group>
+          ))}
+        </group>
+      </group>
+
+      {/* ========================================================================= */}
+      {/* FASE 5: AJUSTE FINAL, PH E RESERVATÓRIO (360.000 L/H)                     */}
+      {/* ========================================================================= */}
+      <group position={[6.6, 0.1, -0.8]}>
+        {/* Cartuchos de Remineralização (calcita e dolomita para aporte de Ca e Mg) */}
+        {[-0.8, -0.4, 0.0].map((dx, i) => (
+          <group key={i} position={[dx, 0.18, -0.8]}>
+            <mesh>
+              <cylinderGeometry args={[0.1, 0.1, 0.65, 16]} />
+              <meshStandardMaterial color="#d4ccbe" roughness={0.8} />
+            </mesh>
+            <mesh position={[0, 0.36, 0]}>
+              <cylinderGeometry args={[0.12, 0.12, 0.06, 16]} />
+              <meshStandardMaterial color="#3ea8cf" metalness={0.6} roughness={0.3} />
+            </mesh>
+          </group>
+        ))}
+
+        {/* Barramento de tubulações de ajuste de pH com válvulas e dosagem */}
+        <group position={[0.6, 0.45, -0.8]}>
+          {/* Tubulação horizontal */}
+          <mesh rotation={[0, 0, Math.PI / 2]}>
+            <cylinderGeometry args={[0.035, 0.035, 1.4, 12]} />
+            <meshStandardMaterial color="#2374ab" metalness={0.7} roughness={0.3} />
+          </mesh>
+          {/* Válvulas manuais de controle com volantes vermelhos */}
+          {[-0.4, 0.1, 0.5].map((dx, i) => (
+            <group key={i} position={[dx, 0, 0]}>
+              <mesh position={[0, 0.06, 0]}>
+                <cylinderGeometry args={[0.02, 0.02, 0.1, 8]} />
+                <meshStandardMaterial color="#e5e7eb" metalness={0.7} />
+              </mesh>
+              <mesh position={[0, 0.12, 0]} rotation={[Math.PI / 2, 0, 0]}>
+                <torusGeometry args={[0.045, 0.012, 8, 16]} />
+                <meshStandardMaterial color="#dc2626" roughness={0.4} />
+              </mesh>
+            </group>
+          ))}
+        </group>
+
+        {/* Tubulação principal de saída de água potável (Distribuição Pública) */}
+        <group position={[1.6, -0.25, 0.3]}>
+          {/* Tubo flangeado azul de grande diâmetro */}
+          <mesh rotation={[0, 0, Math.PI / 2]}>
+            <cylinderGeometry args={[0.09, 0.09, 0.9, 16]} />
+            <meshStandardMaterial color="#1e5f8a" metalness={0.65} roughness={0.3} />
+          </mesh>
+          {/* Flange de fixação */}
+          <mesh position={[-0.35, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+            <cylinderGeometry args={[0.14, 0.14, 0.04, 16]} />
+            <meshStandardMaterial color="#475569" metalness={0.8} roughness={0.3} />
+          </mesh>
+          {/* Válvula de gaveta/borboleta com atuador */}
+          <mesh position={[0.1, 0.16, 0]}>
+            <boxGeometry args={[0.12, 0.22, 0.12]} />
+            <meshStandardMaterial color="#0f766e" roughness={0.5} />
+          </mesh>
+        </group>
+      </group>
     </group>
   );
 }

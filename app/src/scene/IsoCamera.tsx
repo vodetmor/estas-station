@@ -18,9 +18,9 @@ export function IsoCamera({ resetSignal }: { resetSignal: number }) {
 
   // Extensão projetada aproximada: comprimento + largura contribuem para o espalhamento
   // horizontal na isométrica simétrica; a altura entra na vertical.
-  const projectedSpan = (STATION_LENGTH + STATION_WIDTH) * 0.62;
+  const projectedSpan = (STATION_LENGTH + STATION_WIDTH) * 0.66;
   const fitZoom = Math.min(size.width / projectedSpan, size.height / (projectedSpan * 0.62 + ELEV_SCALE));
-  const zoom = Math.max(16, Math.min(60, fitZoom));
+  const zoom = Math.max(16, Math.min(48, fitZoom));
 
   useEffect(() => {
     if (cameraRef.current) {
@@ -39,14 +39,15 @@ export function IsoCamera({ resetSignal }: { resetSignal: number }) {
 
   return (
     <>
-      <OrthographicCamera ref={cameraRef} makeDefault position={[13, 7, 10]} zoom={zoom} near={0.1} far={300} />
+      <OrthographicCamera ref={cameraRef} makeDefault position={[5.4, 10.2, 15.0]} zoom={zoom} near={0.1} far={300} />
       <OrbitControls
         ref={controlsRef}
         makeDefault
+        target={[0.3, 1.9, 0.2]}
         enablePan
         panSpeed={0.6}
-        minPolarAngle={Math.PI / 3.4}
-        maxPolarAngle={Math.PI / 2.25}
+        minPolarAngle={Math.PI / 4.2}
+        maxPolarAngle={Math.PI / 2.05}
         minZoom={12}
         maxZoom={160}
         enableDamping

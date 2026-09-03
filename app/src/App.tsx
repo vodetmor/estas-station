@@ -1,10 +1,11 @@
 import { Canvas } from '@react-three/fiber';
 import './App.css';
 import { IsoCamera } from './scene/IsoCamera';
+import { HillsideTerrain } from './scene/HillsideTerrain';
 import { StationStructure } from './scene/StationStructure';
 import { StationProps } from './scene/StationProps';
-import { WaterFlow } from './scene/WaterFlow';
-import { StageMarkers } from './scene/StageMarkers';
+import { RealisticWater } from './scene/RealisticWater';
+import { TechnicalAnnotations } from './scene/TechnicalAnnotations';
 import { TopBar } from './components/TopBar';
 import { StageBar } from './components/StageBar';
 import { LayerDock } from './components/LayerDock';
@@ -22,15 +23,16 @@ function StationScene() {
 
   return (
     <>
-      <hemisphereLight args={['#dbeaff', '#6d6152', 0.42]} />
-      <ambientLight intensity={0.36} />
-      <directionalLight position={[9, 12, 6]} intensity={1.1} />
-      <directionalLight position={[-6, 5, -4]} intensity={0.22} />
+      <hemisphereLight args={['#eef7ff', '#4a4035', 0.6]} />
+      <ambientLight intensity={0.5} />
+      <directionalLight position={[12, 16, 8]} intensity={1.4} />
+      <directionalLight position={[-8, 10, -6]} intensity={0.4} color="#cce7ff" />
       <IsoCamera resetSignal={resetSignal} />
+      <HillsideTerrain />
       <StationStructure />
       <StationProps />
-      <WaterFlow />
-      <StageMarkers />
+      <RealisticWater />
+      <TechnicalAnnotations />
     </>
   );
 }
@@ -41,6 +43,7 @@ export default function App() {
   const indicatorsOpen = useStationStore((s) => s.indicatorsOpen);
   const toggleDetails = useStationStore((s) => s.toggleDetails);
   const toggleIndicators = useStationStore((s) => s.toggleIndicators);
+  const technicalOverlay = useStationStore((s) => s.technicalOverlay);
 
   return (
     <div
@@ -50,12 +53,32 @@ export default function App() {
       data-details={detailsOpen ? 'open' : 'closed'}
     >
       <div className="viewport">
-        <Canvas dpr={[1, 2]} gl={{ antialias: true, preserveDrawingBuffer: true }}>
+        <Canvas
+          dpr={[1, 1.35]}
+          gl={{
+            antialias: true,
+            powerPreference: 'high-performance',
+            stencil: false,
+            depth: true,
+          }}
+        >
           <StationScene />
         </Canvas>
       </div>
 
       <TopBar />
+
+      {!cleanMode && technicalOverlay && (
+        <div className="compass-hud" title="Orientação Geográfica da Estação">
+          <div className="compass-n">N</div>
+          <div className="compass-star">✦</div>
+          <div className="compass-axis">
+            <span>W</span>
+            <span>E</span>
+          </div>
+          <div className="compass-s">S</div>
+        </div>
+      )}
 
       {!cleanMode && (
         <>
